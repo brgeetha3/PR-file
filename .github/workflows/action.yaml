@@ -9,24 +9,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
     - name: Fetch File Content
       id: fetch_file_content
       run: |
         FILE_CONTENT=$(curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/main/new.yaml")
         echo "::set-output name=file_content::$FILE_CONTENT"
-
     - name: Update PR Body
       run: |
         FILE_CONTENT=${{ steps.fetch_file_content.outputs.file_content }}
-        UPDATED_BODY=$(jq -n --arg content "$FILE_CONTENT" '$content + "\n\n---\n\n" + (.pull_request.body // "")')
-        echo "$UPDATED_BODY" > updated_body.txt
-        jq -n --arg content "$UPDATED_BODY" '{"body": $content}' > updated_body.json
+        PR_BODY=$(jq -n --arg content "$FILE_CONTENT" '.pull_request.body |= . + "\n\n" + $content' $GITHUB_EVENT_PATH)
+        echo "$PR_BODY" > $GITHUB_EVENT_PATH
 
-    - name: Update PR
-      uses: actions/github-script@v4
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const fs = require('fs');
-          const body = JSON.parse(fs.readFileSync('updated_body.json', 'utf8'));
-          await github.pulls.update({ owner: context.repo.owner, repo: context.repo.repo, pull_number: context.issue.number, body: body.body });
+    - name: Commit changes
+      run: | 
+        git add $GITHUB_EVENT_PATH
+        git commit -n "update Pr body with the file content"
+        git push
