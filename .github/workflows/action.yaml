@@ -15,7 +15,7 @@ jobs:
     - name: Display File Content
       run: |
         # Extract file URL from PR body
-        FILE_URL=$(jq -r '.pull_request.body' $GITHUB_EVENT_PATH | grep -oP 'https?://\S+')
+        FILE_URL=$(jq -r '.pull_request.body' ${{ github.event_path }} | grep -oP 'https?://\S+')
         
         # Download file content
         FILE_CONTENT=$(curl -s $FILE_URL)
