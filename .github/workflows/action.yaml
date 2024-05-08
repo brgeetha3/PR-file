@@ -1,32 +1,26 @@
-name: Pull File from PR Body
+name: Display File Content on PR Creation
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened]
 
 jobs:
-  pull-file:
+  display-file-content:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Extract File URL from PR Body
-      id: extract_url
+    - name: Display File Content
       run: |
-        PR_BODY=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
-          | jq -r '.body')
-        FILE_URL=$(echo "$PR_BODY" | grep -oP 'https?://\S+')
-        echo "::set-output name=file_url::$FILE_URL"
-
-    - name: Download File
-      id: download_file
-      run: |
-        FILE_URL=${{ steps.extract_url.outputs.file_url }}
-        wget -O new.yaml "$FILE_URL"
-      
-    - name: Print File Content
-      run: |
+        # Extract file URL from PR body
+        FILE_URL=$(jq -r '.pull_request.body' $GITHUB_EVENT_PATH | grep -oP 'https?://\S+')
+        
+        # Download file content
+        FILE_CONTENT=$(curl -s $FILE_URL)
+        
+        # Display file content
+        # Display file content
+        echo "Content of new.yaml:"
         cat new.yaml
