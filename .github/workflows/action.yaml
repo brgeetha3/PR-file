@@ -1,28 +1,31 @@
-name: Display File Content on PR Creation
+name: Update PR Body with File Content
 
 on:
   pull_request:
     types: [opened]
 
 jobs:
-  display-file-content:
+  update-pr-body:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Extract File URL from PR Body
-      id: extract_url
+    - name: Fetch File Content
+      id: fetch_file_content
       run: |
-        PR_BODY=$(jq -r '.pull_request.body' $GITHUB_EVENT_PATH)
+        PR_BODY=$(jq -r '.pull_request.body' ${{ github.event_path }})
         FILE_URL=$(echo "$PR_BODY" | grep -oP 'https?://\S+new\.yaml')
-        echo "::set-output name=file_url::$FILE_URL"
+        FILE_CONTENT=$(curl -sL $FILE_URL)
+        echo "::set-output name=file_content::$FILE_CONTENT"
 
-    - name: Download and Display File Content
-      id: download_and_display
+    - name: Update PR Body
       run: |
-        FILE_URL=${{ steps.extract_url.outputs.file_url }}
-        FILE_CONTENT=$(curl -s $FILE_URL)
-        echo "File content from PR body:"
-        echo "$FILE_CONTENT"
+        FILE_CONTENT=${{ steps.fetch_file_content.outputs.file_content }}
+        PR_BODY=$(jq -r '.pull_request.body' ${{ github.event_path }})
+        UPDATED_PR_BODY="$PR_BODY\n\n$FILE_CONTENT"
+        curl -X PATCH \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -d "{\"body\": \"$UPDATED_PR_BODY\"}" \
+          "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}"
