@@ -1,0 +1,32 @@
+name: Pull File from PR Body
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  pull-file:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Extract File URL from PR Body
+      id: extract_url
+      run: |
+        PR_BODY=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+          "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.number }}" \
+          | jq -r '.body')
+        FILE_URL=$(echo "$PR_BODY" | grep -oP 'https?://\S+')
+        echo "::set-output name=file_url::$FILE_URL"
+
+    - name: Download File
+      id: download_file
+      run: |
+        FILE_URL=${{ steps.extract_url.outputs.file_url }}
+        wget -O file.txt "$FILE_URL"
+      
+    - name: Print File Content
+      run: |
+        cat file.txt
