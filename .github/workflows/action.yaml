@@ -12,15 +12,17 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Display File Content
+    - name: Extract File URL from PR Body
+      id: extract_url
       run: |
-        # Extract file URL from PR body
-        FILE_URL=$(jq -r '.pull_request.body' $GITHUB_EVENT_PATH | grep -oP 'https?://\S+')
-        
-        # Download file content
+        PR_BODY=$(jq -r '.pull_request.body' $GITHUB_EVENT_PATH)
+        FILE_URL=$(echo "$PR_BODY" | grep -oP 'https?://\S+new\.yaml')
+        echo "::set-output name=file_url::$FILE_URL"
+
+    - name: Download and Display File Content
+      id: download_and_display
+      run: |
+        FILE_URL=${{ steps.extract_url.outputs.file_url }}
         FILE_CONTENT=$(curl -s $FILE_URL)
-        
-        # Display file content
-        # Display file content
-        echo "Content of new.yaml:"
-        cat new.yaml
+        echo "File content from PR body:"
+        echo "$FILE_CONTENT"
